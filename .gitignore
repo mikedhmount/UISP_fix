@@ -1,0 +1,8 @@
+# Ignore ovpn files
+*.ovpn
+
+# Config file
+config.py
+
+# Text files
+*.txt
