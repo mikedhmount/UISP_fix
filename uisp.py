@@ -1,10 +1,10 @@
 import requests
 import json
 from collections import defaultdict
-import subprocess
+import os
 import time
 import psutil
-import paramiko
+from paramiko import client, ssh_exception
 import config
 
 uisphost = config.host
@@ -55,26 +55,28 @@ for key in Sites:
 		print('Config file: ' + siteVPNFile)
 		print('Text file: ' + siteVPNcfg)
 		print('IP: ' + str(ipaddresses))
-		taskResult = subprocess.run(["sudo /usr/sbin/openvpn --config VPN/" + siteVPNFile + " --auth-user-pass key/" + siteVPNcfg ], shell=True, capture_output=True, text=True)
-		print(taskResult)
+		os.system("sudo /usr/sbin/openvpn --config VPN/" + siteVPNFile + " --auth-user-pass VPN/key/" + siteVPNcfg + " &")
 		print(key + " open")
-		time.sleep(30)
+		time.sleep(10)
 		for ip in ipaddresses:
 			print("IP is: " + ip)
-			ssh = paramiko.SSHClient()
+			ssh_client = client.SSHClient()
 			try:
-				ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+				ssh_client.set_missing_host_key_policy(client.AutoAddPolicy())
 
-				ssh.connect(ip,username=sshusername, password=sshpassword)
-
+				ssh_client.connect(hostname=ip, username=sshusername, password=sshpassword, look_for_keys=False)
 				print("Connected to " + ip)
-				ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("kill $(ps | grep '[{]exe} /bin/udapi-bridge' | awk '{print$1})")
+				device_access = ssh_client.invoke_shell()
+				device_access.send("kill $(ps | grep '[{]exe} /bin/udapi-bridge' | awk '{print$1}')\n")
+				time.sleep(2)
+				output = device_access.recv(65535)
+				print(output.decode(), end='')
+				ssh_client.close()
 				print("Kill command sent")
-				print(ssh_stdout.read().decode())
-
-				ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('exit')
-			except:
+			except ssh_exception.NoValidConnectionsError:
 				print("Cannot connect to " + ip)
+			except ssh_exception.AuthenticationException:
+				print("Authentication error. Check username/password")
 
 		for proc in psutil.process_iter():
 			if any (procstr in proc.name() for procstr in ['openvpn']):
