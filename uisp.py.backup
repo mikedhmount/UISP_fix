@@ -47,8 +47,6 @@ result = defaultdict(list)
 for i,j in sitelist:
 	result[i].append(j)
 
-siteHTML = ""
-
 for key in Sites:
 	if key in result:
 		siteVPNFile = Sites[key][0]
@@ -59,11 +57,9 @@ for key in Sites:
 		print('IP: ' + str(ipaddresses))
 		os.system("sudo /usr/sbin/openvpn --config VPN/" + siteVPNFile + " --auth-user-pass VPN/key/" + siteVPNcfg + " &")
 		print(key + " open")
-		siteHTML += key + "\n"
 		time.sleep(10)
 		for ip in ipaddresses:
 			print("IP is: " + ip)
-			siteHTML += ip + "\n"
 			ssh_client = client.SSHClient()
 			try:
 				ssh_client.set_missing_host_key_policy(client.AutoAddPolicy())
@@ -87,7 +83,3 @@ for key in Sites:
 				proc.kill()
 			
 		print(key + " closed")
-		siteHTML += "\n"
-
-print(siteHTML)
-
