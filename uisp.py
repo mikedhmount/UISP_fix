@@ -6,6 +6,9 @@ import time
 import psutil
 from paramiko import client, ssh_exception
 import config
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 uisphost = config.host
 uispusername = config.uispusername
@@ -59,7 +62,7 @@ for key in Sites:
 		print('IP: ' + str(ipaddresses))
 		os.system("sudo /usr/sbin/openvpn --config VPN/" + siteVPNFile + " --auth-user-pass VPN/key/" + siteVPNcfg + " &")
 		print(key + " open")
-		siteHTML += key + "\n"
+		siteHTML += "<b>" + key + "</b><br/>"
 		time.sleep(10)
 		for ip in ipaddresses:
 			print("IP is: " + ip)
@@ -90,4 +93,26 @@ for key in Sites:
 		siteHTML += "\n"
 
 print(siteHTML)
+if siteHTML == "":
+	siteHTML = "No P2P required reboot"
+	
+sender_email = config.emailname
+receiver_email = config.emailname
+email_pass = config.emailpass
+
+message = MIMEMultipart("alternative")
+message["Subject"] = "P2P Report"
+message["From"] = sender_email
+message["To"] = receiver_email
+
+part1 = MIMEText(siteHTML, "html")
+
+message.attach(part1)
+
+context = ssl.create_default_context()
+with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+	server.login(sender_email, email_pass)
+	server.sendmail(
+		sender_email, receiver_email, message.as_string()
+	)
 
