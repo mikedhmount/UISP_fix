@@ -6,9 +6,11 @@ import time
 import psutil
 from paramiko import client, ssh_exception
 import config
+import logging
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import socket
 
 uisphost = config.host
 uispusername = config.uispusername
@@ -52,6 +54,8 @@ for i,j in sitelist:
 
 siteHTML = ""
 
+f = open("log.txt", "a")
+
 for key in Sites:
 	if key in result:
 		siteVPNFile = Sites[key][0]
@@ -60,41 +64,51 @@ for key in Sites:
 		print('Config file: ' + siteVPNFile)
 		print('Text file: ' + siteVPNcfg)
 		print('IP: ' + str(ipaddresses))
-		os.system("sudo /usr/sbin/openvpn --config VPN/" + siteVPNFile + " --auth-user-pass VPN/key/" + siteVPNcfg + " &")
+		os.system("sudo /usr/sbin/openvpn --config /home/mngsvc/UISP/VPN/" + siteVPNFile + " --auth-user-pass /home/mngsvc/UISP/VPN/key/" + siteVPNcfg + " &")
 		print(key + " open")
+		f.write(key + " open\n")
 		siteHTML += "<b>" + key + "</b><br/>"
 		time.sleep(10)
 		for ip in ipaddresses:
+			f.write("IP is: " + ip + "\n")
 			print("IP is: " + ip)
-			siteHTML += ip + "\n"
+			siteHTML += ip + "<br/>"
 			ssh_client = client.SSHClient()
 			try:
 				ssh_client.set_missing_host_key_policy(client.AutoAddPolicy())
 
 				ssh_client.connect(hostname=ip, username=sshusername, password=sshpassword, look_for_keys=False)
+				f.write("Connected to " + ip + "\n")
 				print("Connected to " + ip)
 				device_access = ssh_client.invoke_shell()
 				device_access.send("kill $(ps | grep '[{]exe} /bin/udapi-bridge' | awk '{print$1}')\n")
 				time.sleep(2)
 				output = device_access.recv(65535)
+				f.write(output.decode() + "\n")
 				print(output.decode(), end='')
 				ssh_client.close()
+				f.write("Kill command sent\n")
 				print("Kill command sent")
 			except ssh_exception.NoValidConnectionsError:
+				f.write("Cannot connect to " + ip + "\n")
 				print("Cannot connect to " + ip)
 			except ssh_exception.AuthenticationException:
+				f.write("Authentication error. Check username/password\n")
 				print("Authentication error. Check username/password")
-
+			except socket.timeout:
+				f.write("Timeout to " + ip + "\n")
+				siteHTML += (ip + " - Timeout<br/>")
 		for proc in psutil.process_iter():
 			if any (procstr in proc.name() for procstr in ['openvpn']):
 				proc.kill()
-			
+		f.write(key + " closed\n")
 		print(key + " closed")
-		siteHTML += "\n"
+		siteHTML += "<br/>"
 
+f.close()
 print(siteHTML)
 if siteHTML == "":
-	siteHTML = "No P2P required reboot"
+	siteHTML = "No P2Ps required reboot"
 	
 sender_email = config.emailname
 receiver_email = config.emailname
