@@ -6,3 +6,5 @@ config.py
 
 # Text files
 *.txt
+
+uisp.py.backup
