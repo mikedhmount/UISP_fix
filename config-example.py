@@ -2,7 +2,7 @@ from collections import defaultdict
 #   UISP Information
 
 host = 'UISP IP or URL'
-uispusername = 'UISP suername'
+uispusername = 'UISP username'
 uipspassword = 'UISP password'
 
 #   SSH Credentials
